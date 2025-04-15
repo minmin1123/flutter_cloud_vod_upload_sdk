@@ -1,0 +1,14 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <application>
+        <receiver android:name="com.sirius.cloud_vod_upload_sdk.videoupload.impl.TVCNetWorkStateReceiver"
+            android:exported="false">
+            <intent-filter>
+                <!--检测网络变化的 action-->
+<!--                <action android:name="android.net.conn.CONNECTIVITY_CHANGE"/>-->
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

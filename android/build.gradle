@@ -1,0 +1,84 @@
+group 'com.sirius.cloud_vod_upload_sdk'
+version '1.0'
+
+ext {
+    enableUploadVideoTquic =  false && getGameBizCode() == "lolm"//版本末期，下次再上
+}
+// 根据配置是否需要添加 avif 依赖，替换不同的 KKAvifDecoder.kt 解码文件
+afterEvaluate { p ->
+    logger.lifecycle("meemobuild tencent vod after evaluate, isKrafton ? ${isKrafton()}" )
+    String fromFile = "${project.projectDir}/src/stub/${isKrafton() ? "none" : "real"}/TVCClient.java"
+    String toDir = "${project.projectDir}/src/main/java/com/sirius/cloud_vod_upload_sdk/videoupload/impl/"
+    copy {
+        from fromFile
+        into toDir
+    }
+
+    String tquicFromFile = "${project.projectDir}/src/stub/${enableUploadVideoTquic ? "tquic" : "non_tquic"}/QuicClient.java"
+    copy {
+        from tquicFromFile
+        into toDir
+    }
+
+    logger.lifecycle("meemobuild copy tquic from $tquicFromFile \ninto $toDir")
+}
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.5.0'
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        mavenCentral()
+    }
+}
+
+apply plugin: 'com.android.library'
+
+apply from: '../../replace.gradle'
+apply from: '../../../../script/util.gradle'
+
+android {
+    compileSdkVersion 28
+    namespace "com.sirius.cloud_vod_upload_sdk"
+    defaultConfig {
+        minSdkVersion 19
+        consumerProguardFiles "consumer-rules.pro", "proguard-project.txt", "proguard-rules.pro"
+    }
+    lintOptions {
+        disable 'InvalidPackage'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "com.android.support:appcompat-v7:${compatSupportVer}"
+    api 'com.squareup.okhttp3:okhttp:3.12.13'//max support for below android 5.0
+    //因为lolm中的pandora也有视频视频上传sdk的,社区侧暂时使用复用他们的sdk,所以不用编入com.qcloud.cos
+    final islolm = "lolm".equalsIgnoreCase(getGameBizCode())
+    //针对蓝洞、lolm的包，如果不是biz_module独立运行，那么使用不能把cos打入进aar
+    if (!isBizModule() && (isKrafton() || islolm)) {
+        logger.lifecycle("flutter_cloud_vod_upload_sdk gradle compileOnly cos")
+        compileOnly 'com.qcloud.cos:cos-android-lite-nobeacon:5.9.17'
+    } else {
+        logger.lifecycle("flutter_cloud_vod_upload_sdk gradle implementation cos")
+        implementation 'com.qcloud.cos:cos-android-lite-nobeacon:5.9.17'
+    }
+    if (enableUploadVideoTquic) { //官网包可以略微增加包体，默认情况下不包含tquic模块
+        implementation 'com.qcloud.cos:quic:1.5.43' //小组件那里也用到，用那边的版本， 那边的版本对参数有注释
+    } else {
+        compileOnly 'com.qcloud.cos:quic:1.5.43'
+    }
+
+    implementation "com.android.support:support-annotations:26.1.0"
+}
